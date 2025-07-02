@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Game Puzzle Hewan Seru!</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      text-align: center;
+      margin: 0;
+      min-height: 100vh;
+      background: url('background.jpg') no-repeat center center fixed;
+      background-size: cover;
+      color: white;
+      text-shadow: 1px 1px 4px black;
+    }
+    #container { background-color: rgba(0,0,0,0.5); padding: 20px; margin: auto; max-width: 600px; border-radius: 20px; }
+    h1 { font-size: 3em; margin-bottom: 10px; }
+    #grid { display: grid; grid-template-columns: repeat(4, 100px); gap: 2px; justify-content: center; margin: 20px auto; }
+    .tile { width: 100px; height: 100px; background-color: #ddd; background-size: 400px 400px; }
+    #options { margin-top: 20px; }
+    button { margin: 5px; padding: 10px 20px; font-size: 16px; border-radius: 10px; border: none; cursor: pointer; }
+    #timer, #score { font-size: 24px; margin-top: 20px; }
+    #result-img { margin-top: 20px; width: 400px; border-radius: 20px; }
+  </style>
+</head>
+<body>
+
+  <div id="container">
+    <h1>🐾 Tebak Puzzle Hewan! 🐾</h1>
+    <p>Temukan gambar hewan hanya dari beberapa potongan! Jawab dengan cepat, raih skor tertinggi! 🏆</p>
+    <div id="timer">Waktu: 10</div>
+    <div id="score">Skor: 0</div>
+    <div id="grid"></div>
+    <div id="options"></div>
+    <img id="result-img" style="display:none;" />
+
+    <audio id="alarm" src="alarm.mp3"></audio>
+    <audio id="wrong" src="wrong.mp3"></audio>
+    <audio id="correct" src="correct.mp3"></audio>
+    <audio id="backsound" src="backsound.mp3" loop></audio>
+  </div>
+
+  <script>
+    const animals = [
+      {name: "Kucing", img: "kucing.jpeg", options: ["Kucing", "Anjing", "Kelinci"]},
+      {name: "Anjing", img: "dog.jpg", options: ["Kucing", "Anjing", "Sapi"]},
+      {name: "Gajah", img: "elephant.jpg", options: ["Gajah", "Singa", "Zebra"]},
+      {name: "Harimau", img: "tiger.jpg", options: ["Harimau", "Beruang", "Serigala"]},
+      {name: "Panda", img: "panda.jpg", options: ["Panda", "Koala", "Monyet"]},
+      {name: "Singa", img: "lion.jpg", options: ["Singa", "Harimau", "Serigala"]},
+      {name: "Kuda", img: "horse.jpg", options: ["Kuda", "Zebra", "Keledai"]},
+      {name: "Zebra", img: "zebra.jpg", options: ["Zebra", "Gajah", "Kuda"]},
+      {name: "Rusa", img: "deer.jpg", options: ["Rusa", "Kambing", "Kelinci"]},
+      {name: "Beruang", img: "bear.jpg", options: ["Beruang", "Panda", "Singa"]},
+    ];
+    let currentSession = 0;
+    let timeLeft = 10;
+    let timer;
+    let score = 0;
+    
+    const grid = document.getElementById("grid");
+    const optionsDiv = document.getElementById("options");
+    const timerDiv = document.getElementById("timer");
+    const scoreDiv = document.getElementById("score");
+    const resultImg = document.getElementById("result-img");
+    const alarmSound = document.getElementById("alarm");
+    const wrongSound = document.getElementById("wrong");
+    const correctSound = document.getElementById("correct");
+    const backsound = document.getElementById("backsound");
+
+    backsound.volume = 0.3;
+
+    function startSession() {
+      grid.innerHTML = "";
+      optionsDiv.innerHTML = "";
+      resultImg.style.display = "none";
+      timeLeft = 10;
+      timerDiv.textContent = `Waktu: ${timeLeft}`;
+      
+      const animal = animals[currentSession];
+      const indexes = getRandomIndexes(3, 16);
+      for (let i = 0; i < 16; i++) {
+        const tile = document.createElement("div");
+        tile.classList.add("tile");
+        if (indexes.includes(i)) {
+          const row = Math.floor(i / 4);
+          const col = i % 4;
+          tile.style.backgroundImage = `url(${animal.img})`;
+          tile.style.backgroundPosition = `-${col * 100}px -${row * 100}px`;
+        }
+        grid.appendChild(tile);
+      }
+
+      animal.options.forEach(opt => {
+        const btn = document.createElement("button");
+        btn.textContent = opt;
+        btn.onclick = () => checkAnswer(opt);
+        optionsDiv.appendChild(btn);
+      });
+
+      timer = setInterval(() => {
+        timeLeft--;
+        timerDiv.textContent = `Waktu: ${timeLeft}`;
+        if (timeLeft === 3) alarmSound.play();
+        if (timeLeft <= 0) {
+          clearInterval(timer);
+          showAnswer(false);
+        }
+      }, 1000);
+    }
+
+    function getRandomIndexes(count, max) {
+      const idxs = [];
+      while (idxs.length < count) {
+        const idx = Math.floor(Math.random() * max);
+        if (!idxs.includes(idx)) idxs.push(idx);
+      }
+      return idxs;
+    }
+
+    function checkAnswer(answer) {
+      clearInterval(timer);
+      const correct = animals[currentSession].name;
+      if (answer === correct) {
+        score++;
+        scoreDiv.textContent = `Skor: ${score}`;
+        correctSound.play();
+        showAnswer(true);
+      } else {
+        wrongSound.play();
+        startSession(); // ulang sesi
+      }
+    }
+
+    function showAnswer(correct) {
+      grid.innerHTML = "";
+      if (correct) {
+        resultImg.src = animals[currentSession].img;
+        resultImg.style.display = "block";
+        setTimeout(() => nextSession(), 2000);
+      } else {
+        startSession();
+      }
+    }
+
+    function nextSession() {
+      currentSession++;
+      if (currentSession < animals.length) {
+        startSession();
+      } else {
+        alert(`Permainan selesai! Skor akhir kamu: ${score}`);
+        location.reload();
+      }
+    }
+
+    startSession();
+
+    document.addEventListener("click", () => {
+      backsound.play();
+    });
+  </script>
+
+</body>
+</html>
